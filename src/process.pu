@@ -578,12 +578,119 @@ card run {
                 :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
                 :camera.SetViewMat();
                 :camera.SetProjectionMat();
-                :m_Renderer.BeginFrame();
-                :m_Renderer.BeginRenderPass();
-                :RenderSystem.RenderGameObjects();
-                :m_Renderer.EndRenderPass();
-                :m_Renderer.EndFrame();
-            endwhile(<color:hotpink>false)
+
+                partition m_Renderer.BeginFrame {
+                    :WaitForFence();
+
+                    note right
+                        If the fence is unsignaled, CPU blocks here till all submitted command buffers have completed execution.
+                    end note
+
+                    :ResetFence();
+
+                    note right
+                        mark the new round(Acquire image -> Submit command buffer -> present -> render -> Acquire next image) begins
+                    end note
+
+                    :auto result = vkAcquireNextImageKHR();
+
+                    note right
+                        acquiring image needs a semaphore and an optinal fence so that CPU continues to do stuffs
+                        we may recreate swap chain in case of resizing window
+                    end note
+
+                    if(result == VK_ERROR_OUT_OF_DATE_KHR) then(<color:hotpink>true)
+                        :RecreateSwapChain();
+                        :return VK_NULL_HANDLE;
+                        stop
+                    endif
+
+                    :BeginCommandBuffer();
+                }
+
+                partition m_Renderer.BeginRenderPass {
+                    :CmdBeginRenderPass();
+
+                    note right
+                        **VkRenderPassBeginInfo**
+                        .sType
+                        .renderPass
+                        .framebuffer
+                        .renderArea.offset
+                        .renderArea.extent
+                        .clearValueCount
+                        .pClearValues
+                    end note
+
+                    :vkCmdSetViewport();
+
+                    note right
+                        optional dynamic
+                    end note
+
+                    :vkCmdSetScissor();
+
+                    note right
+                        optional dynamic
+                    end note
+
+                }
+
+                partition RenderSystem.RenderGameObjects {
+                    :CmdBindPipeline();
+                    :CmdBindVertexBuffer();
+
+                    if(m_HasIndexBuffer) then(<color:hotpink>true)
+                        :CmdBindIndexBuffer();
+                        :CmdDrawIndexed();
+                    else(<color:red>false)
+                        :CmdDraw();
+                    endif
+                    
+                }
+
+                partition m_Renderer.EndRenderPass {
+                    :CmdEndRenderPass();
+                }
+
+                partition m_Renderer.EndFrame {
+                    :EndCommandBuffer();
+
+                    :vkQueueSubmit();
+
+                    floating note right
+                        vkQueueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence)
+                    end note
+
+                    floating note right
+                        Once all submitted command buffers have completed execution, the fence will be set to signaled state.
+
+                        **VkSubmitInfo**
+                        .sType
+                        .waitSemaphoreCount
+                        .pWaitSemaphores // when Acquiring image semaphore is unsignaled,it waits till it's signaled
+                        .pWaitDstStageMask
+                        .commandBufferCount
+                        .pCommandBuffers
+                        .signalSemaphoreCount
+                        .pSignalSemaphores // when Acquiring image semaphore is signaled, this semaphore will be unsignaled untill ready for Presentation
+                    end note
+
+                    :vkQueuePresentKHR();
+
+                    note right
+                        **VkPresentInfoKHR**
+                        .sType
+                        .waitSemaphoreCount
+                        .pWaitSemaphores // when ready for Presentation semaphore is unsignaled, it waits till it's signaled
+                        .swapchainCount
+                        .pSwapchains
+                        .pImageIndices
+                    end note
+
+                }
+
+            endwhile(<color:red>false)
                 :vkDeviceWaitIdle();
         end group
 }
