@@ -1,0 +1,13 @@
+@startuml
+!include window.pu
+!include device.pu
+!include swapchain.pu
+!include pipeline.pu
+!include model.pu
+!include game_object.pu
+!include renderer.pu
+!include render_system.pu
+!include camera.pu
+!include keyboard_controller.pu
+!include app.pu
+@enduml

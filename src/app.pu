@@ -1,0 +1,20 @@
+@startuml
+class App
+{
+    + App();
+    + \~App();
+    + App(const App &) = delete;
+    + App &operator=(const App &) = delete;
+    + void run();
+
+    + const int m_Width = 800;
+    + const int m_Height = 600;
+
+    - void LoadGameObjects();
+
+    - Window m_Window{m_Width, m_Height, "Vulkan Warper"};
+    - Device m_Device{m_Window};
+    - Renderer m_Renderer{m_Window, m_Device};
+    - std::vector<DivineGameObject> m_GameObjects;
+}
+@enduml

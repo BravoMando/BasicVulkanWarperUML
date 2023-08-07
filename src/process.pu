@@ -1,0 +1,648 @@
+@startuml Process
+
+!theme aws-orange
+
+start
+
+partition #White/Orange App {
+
+    group Window
+        :glfwInit();
+        :glfwWindowHint();
+        :glfwCreateWindow();
+        :glfwSetWindowUserPointer();
+        :glfwSetFramebufferSizeCallback();
+    end group
+
+    group Device
+        :CreateInstance();
+        if(Device::s_EnableValidationLayer) then(<color:hotpink>true)
+        :SetUpDebugMessenger();
+        else(<color:red>false)
+        endif
+        :CreateSurface();
+        :PickPhysicalDevice();
+        :CreateLogicalDevice();
+        :CreateCommandPool();
+    end group
+
+    group Renderer
+        :RecreateSwapChain();
+
+        group SwapChain
+            :CreateSwapChain();
+            :CreateImageViews();
+            :CreateRenderPass();
+            :CreateDepthResources();
+            :CreateFrameBuffers();
+            :CreateSyncObjects();
+        end group
+
+        :CreateCommandBuffers();
+
+    end group
+
+    partition #Pink/Yellow LoadGameObjects {
+        :LoadGameObjects();
+    }
+    
+    partition #Pink/Yellow run {
+        :run();
+    }
+
+    partition #Pink/Yellow clean {
+        :clean();
+    }
+
+}
+
+:exit();
+
+stop
+
+
+
+
+
+
+card Window {
+    :CreateWindowSurface();
+
+    note right
+        return glfwCreateWindowSurface(...);
+    end note
+
+    detach
+}
+
+card Device {
+    card CreateInstance {
+        :CheckValidationLayerSupport();
+        :VkApplicationInfo;
+        :VkInstanceCreateInfo;
+
+        note right
+            .sType
+            .pApplicationInfo
+            .enabledExtensionCount
+            .ppEnabledExtensionNames
+            if (Device::s_EnableValidationLayer)
+            {
+                VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
+                PopulateDebugUtilsMessengerCreateInfo(debugInfo);
+                createInfo.enabledLayerCount = static_cast<uint32_t>(Device::s_ValidationLayers.size());
+                createInfo.ppEnabledLayerNames = Device::s_ValidationLayers.data();
+                createInfo.pNext = reinterpret_cast<VkDebugUtilsMessengerCreateInfoEXT *>(&debugInfo);
+            }
+            else
+            {
+                createInfo.enabledLayerCount = 0;
+                createInfo.ppEnabledLayerNames = nullptr;
+                createInfo.pNext = nullptr;
+            }
+        end note
+
+        detach
+    }
+
+    card SetUpDebugMessenger {
+        :PopulateDebugUtilsMessengerCreateInfo(debugInfo);
+
+        note right
+            .sType
+            .messageType
+            .messageSeverity
+            .pfnUserCallback = reinterpret_cast<PFN_vkDebugUtilsMessengerCallbackEXT>(Device::DebugCallback);
+            .pUserData
+        end note
+
+        :CreateDebugUtilsMessengerEXT(...);
+        note right
+            // proxy function return a VkResult enum
+            auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+            if (func != nullptr)
+                return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        end note
+
+        detach
+    }
+
+    card CreateSurface {
+        :r_Window.CreateWindowSurface(...);
+
+        detach
+    }
+
+    card PickPhysicalDevice {
+        :vkEnumeratePhysicalDevices(...);
+
+        card for_each_device {
+            if(IsDeviceSuitable(device)) then(<color:hotpink>true)
+                :m_PhysicalDevice = device;
+                :break loop;
+            else(<color:red>false)
+                :continue loop;
+            endif
+
+            floating note right
+                bool IsDeviceSuitable(VkPhysicalDevice device)
+                {
+                    **FindQueueFamilyIndices**
+                    // vkGetPhysicalDeviceQueueFamilyProperties(...);
+                    // graphics queue index
+                    // vkGetPhysicalDeviceSurfaceSupportKHR(...);
+                    // present queue index
+
+                    extensionSupport = CheckDeviceExtensionSupport(device);
+
+                    **QuerySwapChainSupportDetails**
+                    // vkGetPhysicalDeviceSurfaceCapabilitiesKHR(...)
+                    // vkGetPhysicalDeviceSurfaceFormatsKHR(...)
+                    // vkGetPhysicalDeviceSurfacePresentModesKHR(...)
+
+                    SwapChainAdequate = !details.formats.empty() && !details.presentModes.empty();
+                    // vkGetPhysicalDeviceFeatures(...)
+
+                    return indices.IsComplete() &&
+                            extensionSupport &&
+                            SwapChainAdequate &&
+                            features.featureName;
+                }
+            end note
+        }
+
+        if(m_PhysicalDevice == VK_NULL_HANDLE) then(<color:hotpink>true)
+            :throw exception;
+        else(<color:red>false)
+        endif
+
+        stop
+    }
+
+    card CreateLogicalDevice {
+        card create_VkDeviceQueueCreateInfo_for_each_unique_queue_index {
+            :VkDeviceQueueCreateInfo;
+            
+            note right
+                .sType
+                .queueFamilyIndex
+                .queueCount
+                .pQueuePriorities
+            end note
+
+            detach
+        }
+
+        :vkCreateDevice(...);
+
+        note right
+            **VkDeviceCreateInfo**
+            .sType
+            .queueCreateInfoCount
+            .pQueueCreateInfos
+            .pEnabledFeatures
+            .enabledExtensionCount
+            .pEnabledExtensionNames
+            if(Device::s_EnableValidationLayer)
+            {
+                .enabledLayerCount
+                .pEnabledLayerNames
+            }
+        end note
+
+        :vkGetDeviceQueue(...) // graphics queue;
+        :vkGetDeviceQueue(...) // present queue;
+
+        detach
+    }
+
+    card CreateCommandPool {
+        :VkCommandPoolCreateInfo;
+
+        note right
+            .sType
+            .queueFamilyIndex
+            .flags //e.g.// VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+        end note
+
+        detach
+    }
+}
+
+card Renderer {
+    :RecreateSwapChain();
+
+    note right
+        auto extent = r_Window.GetExtent();
+
+        while (extent.width == 0 || extent.height == 0)
+        {
+            extent = r_Window.GetExtent();
+            glfwWaitEvents();
+        }
+
+        vkDeviceWaitIdle(r_Device.GetDevice());
+
+        if (up_SwapChain == nullptr)
+            up_SwapChain = std::make_unique<SwapChain>(r_Device, extent);
+        else
+        {
+            std::shared_ptr<SwapChain> oldSwapChain = std::move(up_SwapChain);
+            up_SwapChain = std::make_unique<SwapChain>(r_Device, extent, oldSwapChain);
+
+            if (!oldSwapChain->CompareSwapFormats(*up_SwapChain.get()))
+                throw std::runtime_error("SwapChain image or depth format has changed!");
+        }
+    end note
+
+    detach
+
+    card SwapChain {
+        :CreateSwapChain();
+
+        note right
+            when create swap chain it also create a sequence of images for specified image usage
+            **VkSwapchainCreateInfoKHR**
+            .sType
+            .surface
+            .minImageCount
+            .imageFormat
+            .imageColorSpace
+            .imageArrayLayers
+            .imageUsage //e.g.// VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+            uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
+            if (indices.graphicsFamily != indices.presentFamily)
+            {
+                createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                createInfo.queueFamilyIndexCount = 2;
+                createInfo.pQueueFamilyIndices = queueFamilyIndices;
+            }
+            else
+            {
+                createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                createInfo.queueFamilyIndexCount = 0;
+                createInfo.pQueueFamilyIndices = nullptr;
+            }
+            .preTransform
+            .compositeAlpha
+            .presentMode
+            .imageExtent
+            .clipped
+            .oldSwapchain = sp_OldSwapChain == nullptr ? VK_NULL_HANDLE : sp_OldSwapChain->GetSwapChain()
+
+            vkGetSwapchainImagesKHR(...)
+        end note
+
+        :CreateImageViews();
+
+        note right
+            for each image
+            **VkImageViewCreateInfo**
+            .sType
+            .image
+            .viewType //e.g.// VK_IMAGE_VIEW_TYPE_2D
+            .format
+            .subresourceRange.aspectMask //e.g.// VK_IMAGE_ASPECT_COLOR_BIT
+            .subresourceRange.baseMipLevel
+            .subresourceRange.levelCount
+            .subresourceRange.baseArrayLayer
+            .subresourceRange.layerCount
+        end note
+
+        :CreateRenderPass();
+
+        note right
+            **VkAttachmentDescription**
+            .format
+            .samples //e.g.// VK_SAMPLE_COUNT_1_BIT
+            .loadOp // the load operation before draw a new frame buffer
+            .storeOp // the store operation of rendered frame content
+            .stencilLoadOp
+            .stencilStoreOp
+            .initialLayout // the attachment's initial layout when render pass begin
+            //e.g.// VK_IMAGE_LAYOUT_UNDEFINED
+            .finalLayout // the attachment's final layout when render pass end
+            //e.g.// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+
+            **VkAttachmentReference**
+            .attachment // the attachment index
+            .layout // the attachments' layout during the subpass
+            //e.g.// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+            //e.g.// image color attachment
+            renderpass begin -> renderpass end -[transition]-> subpass
+            undefined -> present_src -> color_attachment
+            previous frame buffer -> current frame buffer
+            clear -> render -> store
+
+            define subpasses indexed from 0
+            **VkSubpassDescription**
+            .pipelineBindPoint //e.g.// VK_PIPELINE_BIND_POINT_GRAPHICS
+            .colorAttachmentCount // the attachment **reference** count to be used
+            .pColorAttachments // the color attachment **reference**
+            .pDepthStencilAttachment // the depth stencil attachment **reference** to be used
+            .p***Attachment
+
+            subpass
+            implicit subpass -> our defined subpasses -> implicit subpass
+            VK_SUBPASS_EXTERNAL -> [index] 0,1,2,... -> VK_SUBPASS_EXTERNAL
+
+            control the image attachment layout transition and dependent relationship between subpasses
+            **VkSubpassDependency**
+            .srcSubpass     // index of the first subpass in the dependency
+            .dstSubpass     // index of the second subpass in the dependency
+            .srcAccessMask  // the source subpass access mask
+            .srcStageMask   // the source subpass wait stage
+            .dstAccessMask  // the destination subpass access mask      e.g. VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+            .dstStageMask   // the destination subpass wait stage       e.g. VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+
+            **VkRenderPassCreateInfo**
+            .sType
+            .attachmentCount
+            .pAttachments
+            .subpassCount
+            .pSubpasses
+            .dependencyCount
+            .pDependencies
+        end note
+
+        :CreateDepthResources();
+
+        note right
+            manually create a second sequence of images for depth resource
+            **VkImageCreateInfo**
+            .sType
+            .imageType
+            .extent.width
+            .extent.height
+            .extent.depth
+            .mipLevels
+            .arrayLayers
+            .format
+            .tiling
+            .initialLayout
+            .usage
+            .samples
+            .queueFamilyIndexCount
+            .pQueueFamilyIndices
+            .sharingMode
+
+            get memory requirements
+            **VkMemoryAllocateInfo**
+            .sType
+            .allocationSize
+            .memoryTypeIndex
+            allocate memory and bind memory
+
+            **VkImageViewCreateInfo**
+            just like above
+        end note
+
+        :*CreateFrameBuffers();
+
+        note right
+            for each frame buffer
+            **VkFramebufferCreateInfo**
+            .sType
+            .renderPass
+            .attachmentCount // the size(count) of iamge view array
+            .pAttachments // the image view array in render pass specified order
+            .width
+            .height
+            .layers
+        end note
+
+        :CreateSyncObjects();
+
+        note right
+            **VkSemaphoreCreateInfo**
+            .sType
+            AcquireNextImage -[(unsignaled)ImageAvailableSemaphores(wait)]-> SubmitCommandBuffer -[(signaled)RenderFinishedSemaphores(wait)]-> Present
+
+            **VkFenceCreateInfo**
+            .sType
+            .flags //e.g.// VK_FENCE_CREATE_SIGNALED_BIT
+            AcquireNextImage -> ResetFence -> SubmitCommandBuffer -> WaitForFence -> AcquireNextImage
+        end note
+
+
+        detach
+    }
+
+    :CreateCommandBuffers();
+
+    note right
+        VkCommandBufferAllocateInfo
+        .sType
+        .level //e.g.// VK_COMMAND_BUFFER_LEVEL_PRIMARY
+        .commandPool
+        .commandBufferCount
+    end note
+
+    detach
+}
+
+card LoadGameObjects {
+    group Model
+            :CreateVertexBuffers();
+
+            floating note right
+                **VkBufferCreateInfo**
+                .sType
+                .size
+                .usage
+                .sharingMode
+
+                get memory requirements
+                **VkMemoryAllocateInfo**
+                .sType
+                .allocationSize
+                .memoryTypeIndex
+                allocate memory and bind memory
+            end note
+
+            :CreateIndexBuffers();
+
+            detach
+
+        end group
+
+        group Game_Object
+            :obj = DivineGameObject::CreateGameObject();
+
+            note right
+                **Euler Angles**
+                obj.sp_Model
+                obj.m_Color
+                obj.m_ModelMatrix // (copy on wikipedia)Matrix corrsponds to Translate * Ry * Rx * Rz * Scale
+            end note
+
+        end group
+
+    :m_GameObjects.push_back(std::move(obj));
+
+    floating note right
+        //NOTE:// Transformation is selecting a set of coordinate basis.
+    end note
+
+    detach
+}
+
+card run {
+        group RenderSystem
+
+            :CreatePipelineLayout();
+
+            note right
+                **VkPipelineLayoutCreateInfo**
+                .sType
+                .setLayoutCount
+                .pSetLayouts
+                .pushConstantRangeCount
+                .pPushConstantRanges
+            end note
+
+            detach
+
+            group GraphicsPipeline
+
+                :CreateShaderModule();
+                :VkPipelineShaderStageCreateInfo;
+                :VkPipelineVertexInputStateCreateInfo;
+                :VkPipelineInputAssemblyStateCreateInfo;
+                :(dynamic optional)VkViewport viewport;
+                :(dynamic optional)VkRect2D scissor;
+                :VkPipelineViewportStateCreateInfo;
+                :VkPipelineRasterizationStateCreateInfo;
+                :VkPipelineMultisampleStateCreateInfo;
+                :VkPipelineColorBlendAttachmentState;
+                :VkPipelineColorBlendStateCreateInfo;
+                :VkPipelineDepthStencilStateCreateInfo;
+                :VkDynamicState;
+                :VkPipelineDynamicStateCreateInfo;
+                :VkPipelineLayout;
+                :VkRenderPass;
+                :uint32_t subpass;
+
+                detach
+
+            end group
+
+        end group
+
+        group Camera
+
+            :SetView();
+
+                note right
+                    **Euler Angles**
+                    //NOTE:// The camera rotation is the inverse rotation matrix and
+                    the translation is based on the new camera coordinate basis.
+                    viewMat // Matrix corrsponds to Translate * Ry * Rx * Rz
+                end note
+
+            :SetProjection();
+
+            note right
+                projectionMat
+                ##OrthographicProjection
+                ##PerspctiveProjection
+            end note
+
+            detach
+
+        end group
+
+        group KeyboardController
+
+            :void MoveInPlaneXZ(GLFWwindow *window, float dt, DivineGameObject &gameObjects);
+            note right
+                #A controller controlls at least one game_object
+                which is an abstraction of transformation matrices.
+                #In this function we just change the rotate or translation component
+                when certain key is pressed since we just want to move the objects.
+                #Note that we use Euler Angles right now, we need to avoid Gimbal Lock happening
+                by simply clamping the (Roll[Z] Yaw[Y] Pich[X])Pich angle to +- 90 degrees.
+                #The move implementation part is based on the world coordinate.
+            end note
+
+            detach
+
+        end group
+
+        group WhileLoop
+            while(!m_Window.ShouldClose()) is(<color:hotpink>true)
+                :glfwPollEvents();
+                :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
+                :camera.SetViewMat();
+                :camera.SetProjectionMat();
+                :m_Renderer.BeginFrame();
+                :m_Renderer.BeginRenderPass();
+                :RenderSystem.RenderGameObjects();
+                :m_Renderer.EndRenderPass();
+                :m_Renderer.EndFrame();
+            endwhile(<color:hotpink>false)
+                :vkDeviceWaitIdle();
+        end group
+}
+
+card clean {
+    group RenderSystem
+        :vkDestroyPipelineLayout();
+        group GraphicsPipeline
+            :vkDestroyPipeline();
+            :vkDestroyShaderModule();
+            :vkDestroyShaderModule();
+        end group
+    end group
+
+    group Renderer
+        :FreeCommandBuffers();
+        group SwapChain
+            :vkDestroySemaphore(...);
+            :vkDestroyFence(...);
+            :vkDestroyFramebuffer(...);
+            :vkDestroyImageView(...);
+            note right
+                The depth images.
+            end note
+            :vkDestroyImage(...);
+            :vkFreeMemory(...);
+            :vkDestroyRenderPass();
+            note right
+                Only one render pass.
+            end note
+            :vkDestroyImageView(...);
+            note right
+                The swap chain image view.
+            end note
+            :vkDestroySwapchainKHR();
+            note right
+                Only one swap chain.
+            end note
+        end group
+    end group
+
+    group Device
+        :vkDestroyCommandPool();
+        :vkDestroyDevice();
+        :vkDestroySurfaceKHR();
+        if(Device::s_EnableValidationLayer) then(<color:hotpink>true)
+        :DestroyDebugUtilsMessengerEXT();
+        else(<color:red>false)
+        endif
+        :vkDestroyInstance();
+    end group
+
+    group Window
+        :glfwDestroyWindow();
+        :glfwTerminate();
+
+        detach
+
+    end group
+}
+
+@enduml

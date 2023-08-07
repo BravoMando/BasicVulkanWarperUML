@@ -1,0 +1,110 @@
+@startuml BriefIntro
+
+!theme aws-orange
+
+start
+
+partition #White/Orange App {
+
+    group Window
+        :glfwInit();
+        :glfwWindowHint();
+        :glfwCreateWindow();
+        :glfwSetWindowUserPointer();
+        :glfwSetFramebufferSizeCallback();
+    end group
+
+    group Device
+        :CreateInstance();
+        if(Device::s_EnableValidationLayer) then(<color:hotpink>true)
+        :SetUpDebugMessenger();
+        else(<color:red>false)
+        endif
+        :CreateSurface();
+        :PickPhysicalDevice();
+        :CreateLogicalDevice();
+        :CreateCommandPool();
+    end group
+
+    group Renderer
+        :RecreateSwapChain();
+
+        group SwapChain
+            :CreateSwapChain();
+            :CreateImageViews();
+            :CreateRenderPass();
+            :CreateDepthResources();
+            :CreateFrameBuffers();
+            :CreateSyncObjects();
+        end group
+
+        :CreateCommandBuffers();
+
+    end group
+
+    partition #Pink/Yellow LoadGameObjects {
+        :LoadGameObjects();
+    }
+    
+    partition #Pink/Yellow run {
+        group RenderSystem
+            :CreatePipelineLayout();
+
+            group GraphicsPipeline
+                :CreateShaderModule();
+                :VkPipelineShaderStageCreateInfo;
+                :VkPipelineVertexInputStateCreateInfo;
+                :VkPipelineInputAssemblyStateCreateInfo;
+                :(dynamic optional)VkViewport viewport;
+                :(dynamic optional)VkRect2D scissor;
+                :VkPipelineViewportStateCreateInfo;
+                :VkPipelineRasterizationStateCreateInfo;
+                :VkPipelineMultisampleStateCreateInfo;
+                :VkPipelineColorBlendAttachmentState;
+                :VkPipelineColorBlendStateCreateInfo;
+                :VkPipelineDepthStencilStateCreateInfo;
+                :VkDynamicState;
+                :VkPipelineDynamicStateCreateInfo;
+                :VkPipelineLayout;
+                :VkRenderPass;
+                :uint32_t subpass;
+            end group
+
+        end group
+
+        group Camera
+            :SetView();
+            :SetProjection();
+        end group
+
+        group KeyboardController
+            :void MoveInPlaneXZ();
+        end group
+
+        group WhileLoop
+            while(!m_Window.ShouldClose()) is(<color:hotpink>true)
+                :glfwPollEvents();
+                :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
+                :camera.SetViewMat();
+                :camera.SetProjectionMat();
+                :m_Renderer.BeginFrame();
+                :m_Renderer.BeginRenderPass();
+                :RenderSystem.RenderGameObjects();
+                :m_Renderer.EndRenderPass();
+                :m_Renderer.EndFrame();
+            endwhile(<color:hotpink>false)
+                :vkDeviceWaitIdle();
+        end group
+    }
+
+    partition #Pink/Yellow clean {
+        :clean();
+    }
+
+}
+
+:exit();
+
+stop
+
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+class RenderSystem
+{
+    + RenderSystem(Device &device, VkRenderPass renderPass);
+    + \~RenderSystem();
+    + RenderSystem(const RenderSystem &) = delete;
+    + RenderSystem &operator=(const RenderSystem &) = delete;
+    + void RenderGameObjects(\
+        VkCommandBuffer commandBuffer,\
+        std::vector<DivineGameObject> &gameObjects,\
+        const Camera &camera);
+
+    - void CreatePipelineLayout();
+    - void CreatePipeline(VkRenderPass renderPass);
+
+    - Device &r_Device;
+    - VkPipelineLayout m_PipelineLayout;
+    - std::unique_ptr<Pipeline> up_Pipeline;
+}
+@enduml

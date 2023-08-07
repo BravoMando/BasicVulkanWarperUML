@@ -1,0 +1,31 @@
+@startuml
+struct TransformComponent
+{
+    glm::vec3 translation{};
+    glm::vec3 scale{1.0f, 1.0f, 1.0f};
+    glm::vec3 rotation{};
+    
+    glm::mat4 GetModelMat();
+}
+
+class DivineGameObject
+{
+    + DivineGameObject(const DivineGameObject &) = delete;
+    + DivineGameObject &operator=(const DivineGameObject &) = delete;
+    + DivineGameObject(DivineGameObject &&) = default;            // no const
+    + DivineGameObject &operator=(DivineGameObject &&) = default; // no const
+
+    + {static} DivineGameObject CreateGameObject();
+    + inline id_t GetID() const { return m_ID; }
+
+    - DivineGameObject(id_t objID)\
+        : m_ID{objID} {}
+
+    + typedef unsigned int id_t;
+    + std::shared_ptr<Model> sp_Model{};
+    + glm::vec3 m_Color{};
+    + TransformComponent m_ModelMatrix{};
+
+    - id_t m_ID;
+}
+@enduml
