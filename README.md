@@ -27,6 +27,10 @@ The diagrams may look ugly☠️, but I do hope they can help understanding the 
 ![Renderer](./res/renderer.svg)
 + SwapChain
 ![SwapChain](./res/swapchain.svg)
++ DescriptorPool
+![DescriptorPool](./res/descriptor_pool.svg)
++ Buffer
+![Buffer](./res/buffer.svg)
 + Model
 ![Model](./res/model.svg)
 + GameObject
@@ -39,3 +43,7 @@ The diagrams may look ugly☠️, but I do hope they can help understanding the 
 ![Camera](./res/camera.svg)
 + KeyboardController
 ![KeyboardController](./res/keyboard_controller.svg)
++ DescriptorSetLayout
+![DescriptorSetLayout](./res/descriptor_set_layout.svg)
++ DescriptorWriter
+![DescriptorWriter](./res/descriptor_writer.svg)

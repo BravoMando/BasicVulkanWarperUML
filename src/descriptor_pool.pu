@@ -1,0 +1,39 @@
+@startuml
+class [nested]Builder(Pool)
+{
+    + Builder(Device &device) : r_Device{device} {}
+    + \~Builder() {}
+
+    + Builder &AddPoolSize(VkDescriptorType descriptorType, uint32_t count);
+    + Builder &SetPoolFlags(VkDescriptorPoolCreateFlags flags);
+    + Builder &SetMaxSets(uint32_t count);
+
+    + std::unique_ptr<DescriptorPool> Build() const;
+
+    - Device &r_Device;
+    - std::vector<VkDescriptorPoolSize> m_PoolSizes{};
+    - uint32_t m_MaxSets = 1000;
+    - VkDescriptorPoolCreateFlags m_PoolFlags = 0;
+}
+
+class DescriptorPool
+{
+    + DescriptorPool(Device &device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags,
+            const std::vector<VkDescriptorPoolSize> &poolSizes);
+    + \~DescriptorPool();
+    + DescriptorPool(const DescriptorPool &) = delete;
+    + DescriptorPool &operator=(const DescriptorPool &) = delete;
+
+    + bool AllocateDescriptor(const VkDescriptorSetLayout descriptorSetLayout,
+            VkDescriptorSet &descriptor) const;
+    + void FreeDescriptors(std::vector<VkDescriptorSet> &descriptors) const;
+
+    + void ResetPool();
+
+    - Device &r_Device;
+    - VkDescriptorPool m_DescriptorPool;
+
+    + class [nested] Builder;
+    - friend class DescriptorWriter;
+}
+@enduml

@@ -29,22 +29,15 @@ class Device
     + inline VkCommandPool GetCommandPool() const { return m_CommandPool; }
     + inline QueueFamilyIndices GetQueueFamilyIndices() const { return FindQueueFamilyIndices(m_PhysicalDevice); }
     + inline SwapChainSupportDetails GetSwapChainSupportDetails() const { return QuerySwapChainSupportDetails(m_PhysicalDevice); }
-    + void CreateBuffer(\
-        VkDeviceSize size,\
-        VkBufferUsageFlags usage,\
-        VkMemoryPropertyFlags properties,\
-        VkBuffer &buffer,\
-        VkDeviceMemory &bufferMemory);
+    + void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+            VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
     + uint32_t FindMemoryTypeIndex(uint32_t typeFliter, VkMemoryPropertyFlags properties);
     + VkCommandBuffer BeginSingleTimeCommands();
     + void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
     + void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     + void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
-    + void CreateImageWithInfo(\
-        const VkImageCreateInfo &imageInfo,\
-        VkMemoryPropertyFlags properties,\
-        VkImage &image,\
-        VkDeviceMemory &imageMemory);
+    + void CreateImageWithInfo(const VkImageCreateInfo &imageInfo,
+            VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
     + VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
     - void CreateInstance();
@@ -74,10 +67,9 @@ class Device
     + {static} const bool s_EnableValidationLayer;
     + {static} const std::vector<const char *> s_ValidationLayers;
     + {static} const std::vector<const char *> s_DeviceExtensions;
-    + {static} VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(\
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,\
-        VkDebugUtilsMessageTypeFlagsEXT messageType,\
-        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,\
-        void *pUserData);
+    + {static} VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    {static}        VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData);
+
+    + VkPhysicalDeviceProperties m_DeviceProperties;
 }
 @enduml

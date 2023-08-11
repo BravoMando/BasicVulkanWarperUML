@@ -1,16 +1,20 @@
 @startuml
+struct PushConstantData
+{
+    glm::mat4 modelMatrix{1.0f};
+    glm::mat4 normalMatrix{1.0f};
+}
+
 class RenderSystem
 {
-    + RenderSystem(Device &device, VkRenderPass renderPass);
+    + RenderSystem(Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     + \~RenderSystem();
     + RenderSystem(const RenderSystem &) = delete;
     + RenderSystem &operator=(const RenderSystem &) = delete;
-    + void RenderGameObjects(\
-        VkCommandBuffer commandBuffer,\
-        std::vector<DivineGameObject> &gameObjects,\
-        const Camera &camera);
 
-    - void CreatePipelineLayout();
+    + void RenderGameObjects(FrameInfo &frameInfo, std::vector<DivineGameObject> &gameObjects);
+
+    - void CreatePipelineLayout(VkDescriptorSetLayout globalSetLayout);
     - void CreatePipeline(VkRenderPass renderPass);
 
     - Device &r_Device;

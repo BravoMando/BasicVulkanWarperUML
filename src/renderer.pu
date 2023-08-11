@@ -6,18 +6,8 @@ class Renderer
     + Renderer(const Renderer &) = delete;
     + Renderer &operator=(const Renderer &) = delete;
     + inline bool IsFrameInProgress() const { return m_IsFrameStart; }
-    + inline VkCommandBuffer GetCurrentCommandBuffer() const\
-    {\
-        assert(m_IsFrameStart &&\
-               "Can't get command buffer when frame not in progress");\
-        return m_CommandBuffers[m_CurrentFrameIndex];\
-    }
-    + inline int GetFrameIndex() const\
-    {\
-        assert(m_IsFrameStart &&\
-               "Can't get frame index when frame not in progress");\
-        return m_CurrentFrameIndex;\
-    }
+    + inline VkCommandBuffer GetCurrentCommandBuffer() const\n {assert(m_IsFrameStart &&\n "Can't get command buffer when frame not in progress");\n return m_CommandBuffers[m_CurrentFrameIndex];}
+    + inline int GetFrameIndex() const\n {assert(m_IsFrameStart &&\n "Can't get frame index when frame not in progress");\n return m_CurrentFrameIndex;}
     + inline VkRenderPass GetSwapChainRenderPass() const { return up_SwapChain->GetRenderPass(); }
     + inline float GetAspectRatio() const { return up_SwapChain->GetExtentAspectRatio(); }
     + VkCommandBuffer BeginFrame();

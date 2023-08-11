@@ -42,12 +42,122 @@ partition #White/Orange App {
 
     end group
 
+    group DescriptorPool
+
+        :DescriptorPool::Builder().SetMaxSets().AddPoolSize().Build();
+
+    end group
+
     partition #Pink/Yellow LoadGameObjects {
-        :LoadGameObjects();
+        group GameObject
+
+            group Model
+
+                :CreateModelFromFile();
+
+                group Buffer
+                    :CreateBuffer();
+                end group
+
+                note right
+                    vertex buffer
+                    index buffer
+                end note
+
+            end group
+
+            :m_GameObjects.push_back(gameObjc);
+
+            note right
+                gameObj.sp_Model
+                gameObj.m_ModelMatrix.translation
+                gameObj.m_ModelMatrix.scale
+                gameObj.m_ModelMatrix.roration
+            end note
+
+        end group
     }
-    
+
     partition #Pink/Yellow run {
-        :run();
+        group RenderSystem
+            :CreatePipelineLayout();
+
+            group GraphicsPipeline
+                :CreateShaderModule();
+                :VkPipelineShaderStageCreateInfo;
+                :VkPipelineVertexInputStateCreateInfo;
+                :VkPipelineInputAssemblyStateCreateInfo;
+                :(dynamic optional)VkViewport viewport;
+                :(dynamic optional)VkRect2D scissor;
+                :VkPipelineViewportStateCreateInfo;
+                :VkPipelineRasterizationStateCreateInfo;
+                :VkPipelineMultisampleStateCreateInfo;
+                :VkPipelineColorBlendAttachmentState;
+                :VkPipelineColorBlendStateCreateInfo;
+                :VkPipelineDepthStencilStateCreateInfo;
+                :VkDynamicState;
+                :VkPipelineDynamicStateCreateInfo;
+                :VkPipelineLayout;
+                :VkRenderPass;
+                :uint32_t subpass;
+            end group
+
+        end group
+
+        group Camera
+            :SetView();
+            :SetProjection();
+        end group
+
+        group KeyboardController
+            :void MoveInPlaneXZ();
+        end group
+
+        group Buffer
+            :CreateBuffer();
+
+            note right
+                uniform buffer
+            end note
+
+        end group
+
+        group DescriptorSetLayout
+            :DescriptorSetLayout::Builder().AddBinding().Build();
+        end group
+
+        group DescriptorWriter
+            :DescriptorWriter().WriteBuffer().Build();
+        end group
+
+        group WhileLoop
+            while(!m_Window.ShouldClose()) is(<color:hotpink>true)
+                :glfwPollEvents();
+                :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
+                :camera.SetViewMat();
+                :camera.SetProjectionMat();
+                :UBOs[frameIndex]->WriteToBuffer();
+                note right
+                    Copy specified data into uniform buffer memory
+                    Flush memory for non-coherent memory
+                end note
+                :UBOs[frameIndex]->Flush();
+                :m_Renderer.BeginFrame();
+                :m_Renderer.BeginRenderPass();
+                :RenderSystem.RenderGameObjects();
+                note right
+                    #BindPipeline
+                    #BindDescriptorSets
+                    #PushConstants
+                    #BindVertexBuffer
+                    #BindIndexBuffer
+                    #Draw
+                end note
+                :m_Renderer.EndRenderPass();
+                :m_Renderer.EndFrame();
+            endwhile(<color:hotpink>false)
+                :vkDeviceWaitIdle();
+        end group
     }
 
     partition #Pink/Yellow clean {
@@ -311,7 +421,7 @@ card Renderer {
             .subresourceRange.layerCount
         end note
 
-        :CreateRenderPass();
+        :*CreateRenderPass();
 
         note right
             **VkAttachmentDescription**
@@ -444,48 +554,75 @@ card Renderer {
     detach
 }
 
+card DescriptorPool {
+    :pool = DescriptorPool::Builder().SetMaxSets().AddPoolSize().Build();
+
+    note right
+        **VkDescriptorPoolSize**
+        .type // the type of descriptor
+        .descriptorCount
+        **VkDescriptorPoolCreateInfo**
+        .sType
+        .poolSizeCount
+        .pPoolSizes // VkDescriptorPoolSize
+        .maxSets
+        .flags
+    end note
+
+    detach
+
+}
+
 card LoadGameObjects {
-    group Model
-            :CreateVertexBuffers();
+    group GameObject
 
-            floating note right
-                **VkBufferCreateInfo**
-                .sType
-                .size
-                .usage
-                .sharingMode
-
-                get memory requirements
-                **VkMemoryAllocateInfo**
-                .sType
-                .allocationSize
-                .memoryTypeIndex
-                allocate memory and bind memory
-            end note
-
-            :CreateIndexBuffers();
-
-            detach
-
-        end group
-
-        group Game_Object
-            :obj = DivineGameObject::CreateGameObject();
+        group Model
+            :CreateModelFromFile();
 
             note right
-                **Euler Angles**
-                obj.sp_Model
-                obj.m_Color
-                obj.m_ModelMatrix // (copy on wikipedia)Matrix corrsponds to Translate * Ry * Rx * Rz * Scale
+                vertex buffer
+                index buffer
             end note
+
+            group Buffer
+                :CreateBuffer();
+
+                note right
+                    **VkBufferCreateInfo**
+                    .sType
+                    .size
+                    .usage
+                    .sharingMode
+
+                    get memory requirements
+                    **VkMemoryAllocateInfo**
+                    .sType
+                    .allocationSize
+                    .memoryTypeIndex
+                    allocate memory and bind memory
+                end note
+
+            end group
 
         end group
 
-    :m_GameObjects.push_back(std::move(obj));
+        :obj = DivineGameObject::CreateGameObject();
 
-    floating note right
+        note right
+            obj.sp_Model
+            **Euler Angles**
+            obj.m_ModelMatrix.translation
+            obj.m_ModelMatrix.scale
+            obj.m_ModelMatrix.roration
+        end note
+
+        floating note right
         //NOTE:// Transformation is selecting a set of coordinate basis.
-    end note
+        end note
+
+        :m_GameObjects.push_back(std::move(obj));
+
+    end group
 
     detach
 }
@@ -559,7 +696,7 @@ card run {
 
             :void MoveInPlaneXZ(GLFWwindow *window, float dt, DivineGameObject &gameObjects);
             note right
-                #A controller controlls at least one game_object
+                #A controller controlls at least one GameObject
                 which is an abstraction of transformation matrices.
                 #In this function we just change the rotate or translation component
                 when certain key is pressed since we just want to move the objects.
@@ -572,12 +709,84 @@ card run {
 
         end group
 
+        group Buffer
+            :CreateBuffer();
+            
+            note right
+                uniform buffer
+            end note
+
+            detach
+
+        end group
+
+        group DescriptorSetLayout
+            :setLayout = DescriptorSetLayout::Builder().AddBinding().Build();
+            
+            note right
+                **VkDescriptorSetLayoutBinding**
+                .binding
+                .descriptorType
+                .descriptorCount
+                .stageFlags
+                .pImmutableSamplers // only relevant for image sampling related descriptors
+                **VkDescriptorSetLayoutCreateInfo**
+                .sType
+                .bindingCount
+                .pBindings
+            end note
+
+            detach
+
+        end group
+
+        group DescriptorSet
+            :DescriptorWriter().WriteBuffer().Build();
+
+            note right
+                **VkWriteDescriptorSet** // in order to update the descriptor set layout **vkUpdateDescriptorSets()**
+                .sType
+                .dstSet
+                .dstBinding
+                .dstArrayElement
+                .descriptorCount
+                .descriptorType
+                .pImageInfo
+                .pBufferInfo
+                .pTexelBufferView
+                //descriptor set layout must always keep track of uniform buffer or other descriptor sources//
+                //when they are not compatable update the descriptor set layout//
+
+                **VkDescriptorSetAllocateInfo**
+                .sType
+                .descriptorPool
+                .descriptorSetCount
+                .pSetLayouts
+            end note
+
+            detach
+
+        end group
+
         group WhileLoop
             while(!m_Window.ShouldClose()) is(<color:hotpink>true)
                 :glfwPollEvents();
                 :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
                 :camera.SetViewMat();
                 :camera.SetProjectionMat();
+                
+                partition Buffer {
+                    :CreateBuffer();
+                    :Map();
+                    note right
+                        vkMapvkMapMemory(...)
+                    end note
+                    :WriteToBuffer();
+                    note right
+                        must be mapped
+                        memcpy(dst, data, size_in_bytes)
+                    end note
+                }
 
                 partition m_Renderer.BeginFrame {
                     :WaitForFence();
@@ -703,6 +912,30 @@ card clean {
             :vkDestroyShaderModule();
             :vkDestroyShaderModule();
         end group
+    end group
+
+    group GameObject
+        group Model
+            group Buffer(Vertex&Index)
+                :Unmap();
+                :vkFreeMemory();
+                :vkDestroyBuffer();
+            end group
+        end group
+    end group
+
+    group Buffer(Uniform)
+        :Unmap();
+        :vkFreeMemory();
+        :vkDestroyBuffer();
+    end group
+
+    group DescriptorSetLayout
+        :vkDestroyDescriptorSetLayout();
+    end group
+
+    group DescriptorPool
+        :vkDestroyDescriptorPool();
     end group
 
     group Renderer

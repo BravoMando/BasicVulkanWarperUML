@@ -1,0 +1,33 @@
+@startuml
+class [nested]Builder(SetLayout)
+{
+    + Builder(Device &device) : r_Device{device} {}
+    + \~Builder() {}
+
+    + Builder &AddBinding(uint32_t binding, VkDescriptorType descriptorType,
+            VkShaderStageFlags stageFlags, uint32_t count = 1);
+
+    + std::unique_ptr<DescriptorSetLayout> Build() const;
+
+    - Device &r_Device;
+    - std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> m_Bindings{};
+}
+
+class DescriptorSetLayout
+{
+    + DescriptorSetLayout(Device &device, std::unordered_map<uint32_t,
+            VkDescriptorSetLayoutBinding> bindings);
+    + \~DescriptorSetLayout();
+    +   DescriptorSetLayout(const DescriptorSetLayout &) = delete;
+    +   DescriptorSetLayout &operator=(const DescriptorSetLayout &) = delete;
+
+    + VkDescriptorSetLayout GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
+
+    - Device &r_Device;
+    - VkDescriptorSetLayout m_DescriptorSetLayout;
+    - std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> m_Bindings;
+
+    + class [nested] Builder;
+    - friend class DescriptorWriter;
+}
+@enduml

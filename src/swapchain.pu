@@ -14,12 +14,9 @@ class SwapChain
     + inline uint32_t GetHeight() const { return m_SwapChainImageExtent.height; }
     + inline VkImageView GetSwapChainImageView(size_t index) const { return m_SwapChainImageViews[index]; }
     + inline VkRenderPass GetRenderPass() const { return m_RenderPass; }
-    + inline float GetExtentAspectRatio() const { return static_cast<float>(m_SwapChainImageExtent.width) / static_cast<float>(m_SwapChainImageExtent.height); }
+    + inline float GetExtentAspectRatio() const;
     + inline VkFramebuffer GetFrameBuffer(size_t index) const { return m_SwapChainFrameBuffers[index]; }
-    + inline bool CompareSwapFormats(const SwapChain &swapChain) const\
-    {\
-        return swapChain.m_SwapChainDepthFormat == m_SwapChainDepthFormat && swapChain.m_SwapChainImageFormat == m_SwapChainImageFormat;\
-    }
+    + inline bool CompareSwapFormats(const SwapChain &swapChain) const;
     + VkFormat FindDepthFormat();
     + VkResult AcquireNextImage(uint32_t *pImageIndex);
     + VkResult SubmitCommandBuffers(const VkCommandBuffer *pBuffers, uint32_t *pImageIndex);

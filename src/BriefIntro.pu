@@ -42,10 +42,42 @@ partition #White/Orange App {
 
     end group
 
+    group DescriptorPool
+
+        :DescriptorPool::Builder().SetMaxSets().AddPoolSize().Build();
+
+    end group
+
     partition #Pink/Yellow LoadGameObjects {
-        :LoadGameObjects();
+        group GameObject
+
+            group Model
+
+                :CreateModelFromFile();
+
+                group Buffer
+                    :CreateBuffer();
+                end group
+
+                note right
+                    vertex buffer
+                    index buffer
+                end note
+
+            end group
+
+            :m_GameObjects.push_back(gameObjc);
+
+            note right
+                gameObj.sp_Model
+                gameObj.m_ModelMatrix.translation
+                gameObj.m_ModelMatrix.scale
+                gameObj.m_ModelMatrix.roration
+            end note
+
+        end group
     }
-    
+
     partition #Pink/Yellow run {
         group RenderSystem
             :CreatePipelineLayout();
@@ -81,15 +113,45 @@ partition #White/Orange App {
             :void MoveInPlaneXZ();
         end group
 
+        group Buffer
+            :CreateBuffer();
+
+            note right
+                uniform buffer
+            end note
+
+        end group
+
+        group DescriptorSetLayout
+            :DescriptorSetLayout::Builder().AddBinding().Build();
+        end group
+
+        group DescriptorWriter
+            :DescriptorWriter().WriteBuffer().Build();
+        end group
+
         group WhileLoop
             while(!m_Window.ShouldClose()) is(<color:hotpink>true)
                 :glfwPollEvents();
                 :controller.MoveInPlaneXZ(m_Window.GetWindowHandle(),frameTime, viewObject);
                 :camera.SetViewMat();
                 :camera.SetProjectionMat();
+                :UpdateUniformBuffers();
+                note right
+                    Copy specified data into uniform buffer memory
+                    Flush memory for non-coherent memory
+                end note
                 :m_Renderer.BeginFrame();
                 :m_Renderer.BeginRenderPass();
                 :RenderSystem.RenderGameObjects();
+                note right
+                    #BindPipeline
+                    #BindDescriptorSets
+                    #PushConstants
+                    #BindVertexBuffer
+                    #BindIndexBuffer
+                    #Draw
+                end note
                 :m_Renderer.EndRenderPass();
                 :m_Renderer.EndFrame();
             endwhile(<color:hotpink>false)

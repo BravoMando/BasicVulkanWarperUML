@@ -1,5 +1,5 @@
 @startuml
-struct KeyMappings
+struct [nested]KeyMappings
 {
     int moveLeft = GLFW_KEY_A;
     int moveRight = GLFW_KEY_D;
@@ -15,10 +15,12 @@ struct KeyMappings
 
 class KeyboardController
 {
-    + void MoveInPlaneXZ(GLFWwindow *window, float dt, DivineGameObject &gameObjects);
+    + [nested] struct KeyMappings;
 
     + KeyMappings m_Keys{};
-    + float m_MoveSpeed = 3.0f;
     + float m_TurnSpeed = 1.5f;
+    + float m_MoveSpeed = 3.0f;
+
+    + void MoveInPlaneXZ(GLFWwindow *window, float dt, DivineGameObject &gameObjects);
 }
 @enduml
