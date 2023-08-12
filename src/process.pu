@@ -441,12 +441,6 @@ card Renderer {
             .layout // the attachments' layout during the subpass
             //e.g.// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 
-            //e.g.// image color attachment
-            renderpass begin -> renderpass end -[transition]-> subpass
-            undefined -> present_src -> color_attachment
-            previous frame buffer -> current frame buffer
-            clear -> render -> store
-
             define subpasses indexed from 0
             **VkSubpassDescription**
             .pipelineBindPoint //e.g.// VK_PIPELINE_BIND_POINT_GRAPHICS
@@ -467,6 +461,12 @@ card Renderer {
             .srcStageMask   // the source subpass wait stage
             .dstAccessMask  // the destination subpass access mask      e.g. VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
             .dstStageMask   // the destination subpass wait stage       e.g. VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+
+            //e.g.// image color attachment
+            -[transition]-> renderpass begin -[transition]-> subpass -[transition]> renderpass end
+            undefined -> color_attachment -> present_src
+            previous frame buffer -> current frame buffer
+            clear -> render -> store -> present
 
             **VkRenderPassCreateInfo**
             .sType

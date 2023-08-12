@@ -1,2 +1,6 @@
 # java package
 plantuml.jar
+
+# files
+RenderPass_FrameBuffer.*
+DescriptorSetLayout_Descriptors.*
